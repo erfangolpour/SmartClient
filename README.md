@@ -1,9 +1,9 @@
-Title: Smart Client
-Author: Erfan Golpour V00991341
-Date: September 20, 2023
+# Smart Client
+## Author: Erfan Golpour V00991341
+## Date: September 20, 2023
 
-Usage: python3 SmartClient.py <URI>
-Note: URI is parsed with regex and works with many different formats. See below:
+Usage: `python3 SmartClient.py <URI>`
+**Note:** URI is parsed with regex and works with many different formats. See below:
 A few examples of valid URIs:
     example.com
     www.example.com
