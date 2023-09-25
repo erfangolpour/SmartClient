@@ -3,8 +3,11 @@
 ### Date: September 20, 2023
 
 Usage: `python3 SmartClient.py <URI>`
-**Note:** URI is parsed with regex and works with many different formats. See below:
-A few examples of valid URIs:
+
+**Note:** URI is parsed with regex and works with many different formats. See below for a few examples.
+
+
+Some of the formats SmartClient accepts as a valid URI:
 - example.com
 - www.example.com
 - www.example.com/
