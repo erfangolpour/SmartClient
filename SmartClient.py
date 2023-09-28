@@ -1,7 +1,7 @@
 import re
 import socket
 import ssl
-from typing import Tuple, List, Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 uri_pattern: re.Pattern = re.compile(
     r'^(?:(?P<protocol>https?)://)?(?P<host>[^:/]+)(?::(?P<port>\d+))?((?P<path>.*?))?$',
@@ -9,7 +9,7 @@ uri_pattern: re.Pattern = re.compile(
 )
 
 cookie_pattern: re.Pattern = re.compile(
-    r'Set-Cookie:\s(?P<name>[^=]+)=(?P<value>[^;]*)(?=.*?\sdomain=(?P<domain>[^;]+))?(?=.*?\sexpires=(?P<expires>[^;]+))?(?=.*?\spath=(?P<path>[^;]+))?.*',
+    r'Set-Cookie:\s(?P<name>[^=]+)=(?P<value>[^;\n]*)(?=.*?\sdomain=(?P<domain>[^;\n]+))?(?=.*?\sexpires=(?P<expires>[^;\n]+))?(?=.*?\spath=(?P<path>[^;\n]+))?.*',
     re.IGNORECASE
 )
 
@@ -126,7 +126,7 @@ class WebServer:
         if connection == "upgrade":
             headers.update({
                 "Upgrade": "h2c",
-                "HTTP2-Settings": "AAMAAABkAAQCAAAAAAIAAAAA",
+                "HTTP2-Settings": "",
             })
 
         query: str = f"GET {self.uri.path} HTTP/1.1\r\n"
@@ -169,7 +169,7 @@ class WebServer:
             Dict[str, Tuple[str, str, str]]: the cookies in the response header
         """
         cookie_matches: List[re.Match] = cookie_pattern.finditer(self.header)
-        return {m.group("name"): (m.group("domain"), m.group("expires"), m.group("path")) for m in cookie_matches}
+        return {m.group("name"): (m.group("value"), m.group("domain"), m.group("expires"), m.group("path")) for m in cookie_matches}
 
     def is_http2_supported(self) -> bool:
         """Check if the server supports HTTP/2.
@@ -226,9 +226,9 @@ def follow_redirects(uri: URI, max_redirects: Optional[int] = 10, hops: Optional
     cookies.update(web_server.parse_cookies())
     hops.append(uri)
 
-    redirect_match = re.search(r'HTTP\/\d\.\d\s(?P<status>\d+)\s([^\r\n]*)', web_server.header)
+    redirect_match = re.search(r'HTTP\/\d\.\d\s(?P<status>\d+)\s([^\r\n]*)', web_server.header, re.IGNORECASE)
     if redirect_match and redirect_match.group("status").startswith('3'):
-        if location_match := re.search(r'Location:\s(?P<uri>[^\n\r]*)', web_server.header):
+        if location_match := re.search(r'Location:\s(?P<uri>[^\n\r]*)', web_server.header, re.IGNORECASE):
             new_url = URI(location_match.group("uri"))
             log(f"Redirecting to {new_url}...")
             return follow_redirects(new_url, max_redirects - 1, hops, cookies)
@@ -256,25 +256,25 @@ if __name__ == "__main__":
         print(f"    * {redirect}")
     print(f"    * {hops[-1]} (final)")
 
-    if (http2_support := web_server.is_http2_supported()) is not None:
-        print("Supports HTTP/2:", "yes" if http2_support else "no")
-    else:
-        log("Failed to check if the server supports HTTP/2.", "warning")
-
     cookies = web_server.parse_cookies()
     print("List of Cookies:")
     if not cookies:
         print("    No cookies found.")
 
     for name, value in cookies.items():
-        print("    * Name:", name, end="")
-        if value[0]:
-            print(", Domain:", value[0], end="")
+        print("    *", name)
+        print("     - Value:", value[0])
         if value[1]:
-            print(", Expires on:", value[1], end="")
+            print("     - Domain:", value[1])
         if value[2]:
-            print(", Path:", value[2], end="")
-        print()
+            print("     - Expires on:", value[2])
+        if value[3]:
+            print("     - Path:", value[3])
+
+    if (http2_support := web_server.is_http2_supported()) is not None:
+        print("Supports HTTP/2:", "yes" if http2_support else "no")
+    else:
+        log("Failed to check if the server supports HTTP/2.", "warning")
 
     print("Password-protected:", "yes" if web_server.is_password_protected() else "no")
     print("------------------------------------------")
